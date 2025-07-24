@@ -1,7 +1,7 @@
 @echo off
 :: Batch script to run Lailloken-UI.py as administrator
 
-set "pythonScript=C:\Users\m_ren\cafe_chill.py"
+set "pythonScript=%~dp0cafe_chill.py"
 
 :: Check if the script is running as administrator
 openfiles >nul 2>&1

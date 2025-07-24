@@ -48,7 +48,7 @@ for day in range(days_to_download):
 for day in range(days_to_download):
     date_str = (current_date - timedelta(days=day)).strftime("%Y-%m-%d")
     combined = AudioSegment.empty()
-    output_filename = f"C:\\Users\\m_ren\\Downloads\\C895_Cafe_Chill_KNHC_{date_str}.mp3"
+    output_filename = os.path.join(os.path.expanduser("~"), "Downloads", f"C895_Cafe_Chill_KNHC_{date_str}.mp3")
     if not os.path.exists(output_filename):
         for time_slot in time_slots:
             filename = f"KNHC_{date_str}{time_slot}.m4a"
