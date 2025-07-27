@@ -1,5 +1,5 @@
 @echo off
-:: Batch script to run Lailloken-UI.py as administrator
+:: Batch script to run cafe_chill.py as administrator
 
 set "pythonScript=%~dp0cafe_chill.py"
 
