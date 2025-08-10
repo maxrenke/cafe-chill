@@ -2,8 +2,9 @@ import requests
 from datetime import datetime, timedelta
 from pydub import AudioSegment
 from mutagen.mp3 import MP3
-from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, TCON, TPE2, TPOS, COMM, APIC
+from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, TCON, TPE2, TPOS, COMM, APIC, TRCK
 import os
+import glob
 
 # Function to download a file from a given URL and save it with the specified filename
 def download_file(url, filename):
@@ -40,7 +41,7 @@ def create_appealing_title(date_str):
         return f'Cafe Chill Sessions • {date_str}'
 
 # Function to add metadata to MP3 file
-def add_metadata(mp3_file_path, date_str):
+def add_metadata(mp3_file_path, date_str, track_number=None):
     try:
         # Load the MP3 file
         audio_file = MP3(mp3_file_path, ID3=ID3)
@@ -63,6 +64,11 @@ def add_metadata(mp3_file_path, date_str):
         audio_file.tags.add(TDRC(encoding=3, text=date_str))  # Date
         audio_file.tags.add(TCON(encoding=3, text="Chill/Lounge"))  # Genre
         audio_file.tags.add(TPOS(encoding=3, text="1/1"))  # Part of set
+        
+        # Add track number if provided
+        if track_number is not None:
+            audio_file.tags.add(TRCK(encoding=3, text=str(track_number)))  # Track number
+        
         audio_file.tags.add(COMM(encoding=3, lang='eng', desc='desc', 
                                 text=f"Cafe Chill radio show recorded from C895 Radio on {date_str}. A chill and relaxing music experience perfect for work, study, or unwinding."))  # Comment
         
@@ -83,9 +89,57 @@ def add_metadata(mp3_file_path, date_str):
         audio_file.save()
         print(f"Added metadata to {mp3_file_path}")
         print(f"Title: {appealing_title}")
+        if track_number is not None:
+            print(f"Track Number: {track_number}")
         
     except Exception as e:
         print(f"Error adding metadata to {mp3_file_path}: {e}")
+
+# Function to update track numbers for existing files
+def update_track_numbers():
+    """Update track numbers for all existing MP3 files in the target directory"""
+    print("\nUpdating track numbers for existing files...")
+    
+    # Get all existing MP3 files in the target directory
+    pattern = os.path.join(target_dir, "C895_Cafe_Chill_KNHC_*.mp3")
+    existing_files = glob.glob(pattern)
+    
+    if not existing_files:
+        print("No existing files found to update")
+        return
+    
+    # Sort files by modification time (newest first)
+    existing_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+    
+    print(f"Found {len(existing_files)} existing files. Updating track numbers...")
+    
+    # Update track numbers starting from 0 for the newest file
+    for track_num, file_path in enumerate(existing_files):
+        try:
+            # Load the MP3 file
+            audio_file = MP3(file_path, ID3=ID3)
+            
+            # Add ID3 tag if it doesn't exist
+            if audio_file.tags is None:
+                audio_file.add_tags()
+            
+            # Remove existing track number tag if it exists
+            if 'TRCK' in audio_file.tags:
+                del audio_file.tags['TRCK']
+            
+            # Add new track number
+            audio_file.tags.add(TRCK(encoding=3, text=str(track_num)))
+            audio_file.save()
+            
+            filename = os.path.basename(file_path)
+            print(f"Updated track number {track_num} for: {filename}")
+            
+        except Exception as e:
+            print(f"Error updating track number for {file_path}: {e}")
+    
+    print("Track number update completed!")
+    print(f"Most recent file: Track 0")
+    print(f"Older files: Track 1, 2, 3, etc.")
 
 # Base URL for the audio files
 base_url = "https://dgk8fnvzp75ey.cloudfront.net/KNHC_"
@@ -110,6 +164,9 @@ days_to_download = 1
 # Target directory for saving files
 target_dir = "/DATA/Media/Music/C895"
 os.makedirs(target_dir, exist_ok=True)
+
+# Track newly created files for track numbering
+newly_created_files = []
 
 # Loop through each day to download files
 for day in range(days_to_download):
@@ -138,7 +195,10 @@ for day in range(days_to_download):
         combined.export(output_filename, format="mp3", bitrate="192k")
         print(f"Combined file {output_filename} created")
         
-        # Add metadata to the combined MP3 file
+        # Add to newly created files list
+        newly_created_files.append((output_filename, date_str))
+        
+        # Add metadata to the combined MP3 file (track number will be added later)
         add_metadata(output_filename, date_str)
         
     else:
@@ -152,3 +212,13 @@ for day in range(days_to_download):
         if os.path.exists(filename):
             os.remove(filename)
             print(f"Removed {filename}")
+
+# Update track numbers for all files in the target directory
+# This ensures proper track numbering based on file modification time (newest = 0)
+if newly_created_files:
+    print(f"\nNew files created: {len(newly_created_files)}")
+    update_track_numbers()
+else:
+    print("\nNo new files were created during this run.")
+    # Still update track numbers for existing files if any exist
+    update_track_numbers()

@@ -2,6 +2,7 @@
 
 # Simple bash script to run cafe_chill_direct.py
 # This version saves files directly to /DATA/Media/Music/C895
+# Track numbering is now handled within the Python script
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -26,8 +27,16 @@ fi
 
 echo "Running cafe_chill_direct.py..."
 echo "Files will be saved directly to: $TARGET_DIR"
+echo "Track numbering will be applied automatically (newest file = track 0)"
 
 # Run the Python script
 python3 "$PYTHON_SCRIPT"
 
-echo "Script completed. Check $TARGET_DIR for your files."
+# Check if the Python script ran successfully
+if [ $? -eq 0 ]; then
+    echo "Script completed successfully!"
+    echo "Check $TARGET_DIR for your files with track numbers applied."
+else
+    echo "Error: Python script failed to execute properly"
+    exit 1
+fi
