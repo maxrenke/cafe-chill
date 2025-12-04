@@ -15,7 +15,7 @@ if [ ! -f "$PYTHON_SCRIPT" ]; then
 fi
 
 # Create the target directory if it doesn't exist
-TARGET_DIR="/DATA/Media/Music/C895"
+TARGET_DIR="/DATA/Media/Music/C895/c895_cafe_chill"
 mkdir -p "$TARGET_DIR"
 
 # Check if we have write permissions to the target directory

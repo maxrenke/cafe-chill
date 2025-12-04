@@ -73,12 +73,12 @@ def add_metadata(mp3_file_path, date_str, track_number=None):
                                 text=f"Cafe Chill radio show recorded from C895 Radio on {date_str}. A chill and relaxing music experience perfect for work, study, or unwinding."))  # Comment
         
         # Add album art if it exists
-        album_art_path = os.path.join(os.path.dirname(__file__), "cafe_chill_album_art.jpg")
+        album_art_path = os.path.join(os.path.dirname(__file__), "c895.png")
         if os.path.exists(album_art_path):
             with open(album_art_path, 'rb') as album_art:
                 audio_file.tags.add(APIC(
                     encoding=3,
-                    mime='image/jpeg',
+                    mime='image/png',
                     type=3,  # Cover (front)
                     desc=u'Album cover',
                     data=album_art.read()
@@ -145,10 +145,7 @@ def update_track_numbers():
 base_url = "https://dgk8fnvzp75ey.cloudfront.net/KNHC_"
 # Time slots for the audio files
 # Adjust for daylight savings time if applicable
-if datetime.today().timetuple().tm_isdst:
-    time_slots = ["T13", "T14", "T15", "T16"]
-else:
-    time_slots = ["T14", "T15", "T16", "T17"]
+time_slots = ["T14", "T15", "T16", "T17"]
 
 # Starting date for downloading files
 current_date = datetime.today().strftime("%Y-%m-%d")
@@ -162,7 +159,7 @@ if datetime.today().weekday() != 6:
 days_to_download = 1
 
 # Target directory for saving files
-target_dir = "/DATA/Media/Music/C895"
+target_dir = "/DATA/Media/Music/C895/c895_cafe_chill"
 os.makedirs(target_dir, exist_ok=True)
 
 # Track newly created files for track numbering
