@@ -1,211 +1,178 @@
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pydub import AudioSegment
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, TCON, TPE2, TPOS, COMM, APIC, TRCK
 import os
 import glob
 
-# Function to download a file from a given URL and save it with the specified filename
+# -----------------------------
+# CONFIGURATION
+# -----------------------------
+
+BASE_URL = "https://dgk8fnvzp75ey.cloudfront.net/KNHC_"
+TIME_SLOTS = ["T05"]  # Powermix hour
+TARGET_DIR = "/DATA/Media/Music/C895/c895_powermix"
+os.makedirs(TARGET_DIR, exist_ok=True)
+
+# -----------------------------
+# UTILITIES
+# -----------------------------
+
 def download_file(url, filename):
-    response = requests.get(url)
-    if response.status_code == 200:
-        with open(filename, 'wb') as file:
-            file.write(response.content)
-        print(f"Downloaded {filename}")
-    else:
-        print(f"Failed to download {filename}")
-
-# Function to create appealing title
-def create_appealing_title(date_str):
+    """Download a file from URL."""
     try:
-        # The show is on Friday night, but the files are for Saturday morning UTC.
-        # We'll use the Friday date for the title.
-        date_obj = datetime.strptime(date_str, '%Y-%m-%d') - timedelta(days=1)
-        month_name = date_obj.strftime('%B')
-        day_num = date_obj.strftime('%d').lstrip('0')
-        year = date_obj.strftime('%Y')
-        
-        return f'Powermix • {month_name} {day_num}, {year}'
-    except:
-        return f'Powermix • {date_str}'
-
-# Function to add metadata to MP3 file
-def add_metadata(mp3_file_path, date_str, track_number=None):
-    try:
-        # Load the MP3 file
-        audio_file = MP3(mp3_file_path, ID3=ID3)
-        
-        # Add ID3 tag if it doesn't exist
-        if audio_file.tags is None:
-            audio_file.add_tags()
-        
-        # Clear existing tags to avoid conflicts
-        audio_file.tags.clear()
-        
-        # Create appealing title
-        appealing_title = create_appealing_title(date_str)
-        
-        # Set metadata
-        audio_file.tags.add(TIT2(encoding=3, text=appealing_title))  # Title
-        audio_file.tags.add(TPE1(encoding=3, text="C895 Radio"))  # Artist
-        audio_file.tags.add(TPE2(encoding=3, text="C895 Radio"))  # Album Artist
-        audio_file.tags.add(TALB(encoding=3, text="Powermix"))  # Album
-        audio_file.tags.add(TDRC(encoding=3, text=date_str))  # Date
-        audio_file.tags.add(TCON(encoding=3, text="Dance/Electronic"))  # Genre
-        audio_file.tags.add(TPOS(encoding=3, text="1/1"))  # Part of set
-        
-        # Add track number if provided
-        if track_number is not None:
-            audio_file.tags.add(TRCK(encoding=3, text=str(track_number)))  # Track number
-        
-        audio_file.tags.add(COMM(encoding=3, lang='eng', desc='desc', 
-                                text=f"Powermix radio show recorded from C895 Radio on {date_str}."))  # Comment
-        
-        # Add album art if it exists
-        album_art_path = os.path.join(os.path.dirname(__file__), "c895.png")
-        if os.path.exists(album_art_path):
-            with open(album_art_path, 'rb') as album_art:
-                audio_file.tags.add(APIC(
-                    encoding=3,
-                    mime='image/png',
-                    type=3,  # Cover (front)
-                    desc=u'Album cover',
-                    data=album_art.read()
-                ))
-            print(f"Added album art from {album_art_path}")
-        
-        # Save the changes
-        audio_file.save()
-        print(f"Added metadata to {mp3_file_path}")
-        print(f"Title: {appealing_title}")
-        if track_number is not None:
-            print(f"Track Number: {track_number}")
-        
-    except Exception as e:
-        print(f"Error adding metadata to {mp3_file_path}: {e}")
-
-# Function to update track numbers for existing files
-def update_track_numbers():
-    """Update track numbers for all existing MP3 files in the target directory"""
-    print("\nUpdating track numbers for existing files...")
-    
-    # Get all existing MP3 files in the target directory
-    pattern = os.path.join(target_dir, "C895_Powermix_KNHC_*.mp3")
-    existing_files = glob.glob(pattern)
-    
-    if not existing_files:
-        print("No existing files found to update")
-        return
-    
-    # Sort files by modification time (newest first)
-    existing_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
-    
-    print(f"Found {len(existing_files)} existing files. Updating track numbers...")
-    
-    # Update track numbers starting from 0 for the newest file
-    for track_num, file_path in enumerate(existing_files):
-        try:
-            # Load the MP3 file
-            audio_file = MP3(file_path, ID3=ID3)
-            
-            # Add ID3 tag if it doesn't exist
-            if audio_file.tags is None:
-                audio_file.add_tags()
-            
-            # Remove existing track number tag if it exists
-            if 'TRCK' in audio_file.tags:
-                del audio_file.tags['TRCK']
-            
-            # Add new track number
-            audio_file.tags.add(TRCK(encoding=3, text=str(track_num)))
-            audio_file.save()
-            
-            filename = os.path.basename(file_path)
-            print(f"Updated track number {track_num} for: {filename}")
-            
-        except Exception as e:
-            print(f"Error updating track number for {file_path}: {e}")
-    
-    print("Track number update completed!")
-    print(f"Most recent file: Track 0")
-    print(f"Older files: Track 1, 2, 3, etc.")
-
-# Base URL for the audio files
-base_url = "https://dgk8fnvzp75ey.cloudfront.net/KNHC_"
-# Time slots for the audio files
-time_slots = ["T05"]
-
-# Starting date for downloading files
-current_date = datetime.today()
-
-# Check if today is Saturday, if not, set to the last Saturday
-# The show is on Friday night, files are available Saturday morning UTC
-if current_date.weekday() != 5:
-    current_date -= timedelta(days=(current_date.weekday() + 2) % 7)
-
-# Number of days to download files for
-days_to_download = 1
-
-# Target directory for saving files
-target_dir = "/DATA/Media/Music/C895/c895_powermix"
-os.makedirs(target_dir, exist_ok=True)
-
-# Track newly created files for track numbering
-newly_created_files = []
-
-# Loop through each day to download files
-for day in range(days_to_download):
-    date_str = (current_date - timedelta(days=day)).strftime("%Y-%m-%d")
-    for time_slot in time_slots:
-        file_url = f"{base_url}{date_str}{time_slot}.m4a"
-        filename = f"KNHC_{date_str}{time_slot}.m4a"
-        if not os.path.exists(filename):
-            download_file(file_url, filename)
+        response = requests.get(url, timeout=15)
+        if response.status_code == 200:
+            with open(filename, "wb") as f:
+                f.write(response.content)
+            print(f"Downloaded {filename}")
+            return True
         else:
-            print(f"{filename} already exists, skipping download")
+            print(f"Failed to download {filename} (HTTP {response.status_code})")
+            return False
+    except Exception as e:
+        print(f"Error downloading {filename}: {e}")
+        return False
 
-# Loop through each day to combine downloaded audio files
-for day in range(days_to_download):
-    date_str = (current_date - timedelta(days=day)).strftime("%Y-%m-%d")
-    combined = AudioSegment.empty()
-    output_filename = os.path.join(target_dir, f"C895_Powermix_KNHC_{date_str}.mp3")
-    if not os.path.exists(output_filename):
-        for time_slot in time_slots:
-            filename = f"KNHC_{date_str}{time_slot}.m4a"
-            if os.path.exists(filename):
-                audio = AudioSegment.from_file(filename, format="m4a")
-                combined += audio
-        
-        # Export with higher quality settings
-        if combined.duration_seconds > 0:
-            combined.export(output_filename, format="mp3", bitrate="192k")
-            print(f"Combined file {output_filename} created")
-            
-            # Add to newly created files list
-            newly_created_files.append((output_filename, date_str))
-            
-            # Add metadata to the combined MP3 file (track number will be added later)
-            add_metadata(output_filename, date_str)
-        
+
+def create_appealing_title(date_str):
+    """Create a nice title using the FRIDAY date (show airs Friday night)."""
+    try:
+        utc_date = datetime.strptime(date_str, "%Y-%m-%d")
+        friday_date = utc_date - timedelta(days=1)
+        return f"Powermix • {friday_date.strftime('%B')} {friday_date.day}, {friday_date.year}"
+    except:
+        return f"Powermix • {date_str}"
+
+
+def add_metadata(mp3_file_path, date_str, track_number=None):
+    """Add ID3 metadata to MP3."""
+    try:
+        audio = MP3(mp3_file_path, ID3=ID3)
+        if audio.tags is None:
+            audio.add_tags()
+
+        audio.tags.clear()
+
+        title = create_appealing_title(date_str)
+
+        audio.tags.add(TIT2(encoding=3, text=title))
+        audio.tags.add(TPE1(encoding=3, text="C895 Radio"))
+        audio.tags.add(TPE2(encoding=3, text="C895 Radio"))
+        audio.tags.add(TALB(encoding=3, text="Powermix"))
+        audio.tags.add(TDRC(encoding=3, text=date_str))
+        audio.tags.add(TCON(encoding=3, text="Dance/Electronic"))
+        audio.tags.add(TPOS(encoding=3, text="1/1"))
+
+        if track_number is not None:
+            audio.tags.add(TRCK(encoding=3, text=str(track_number)))
+
+        # Album art
+        art_path = os.path.join(os.path.dirname(__file__), "c895.png")
+        if os.path.exists(art_path):
+            with open(art_path, "rb") as img:
+                audio.tags.add(APIC(
+                    encoding=3,
+                    mime="image/png",
+                    type=3,
+                    desc="Cover",
+                    data=img.read()
+                ))
+            print("Added album art")
+
+        audio.save()
+        print(f"Metadata added to {mp3_file_path}")
+
+    except Exception as e:
+        print(f"Metadata error: {e}")
+
+
+def update_track_numbers():
+    """Newest file = track 0."""
+    pattern = os.path.join(TARGET_DIR, "C895_Powermix_KNHC_*.mp3")
+    files = glob.glob(pattern)
+
+    if not files:
+        print("No files to update.")
+        return
+
+    files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+
+    for i, fpath in enumerate(files):
+        try:
+            audio = MP3(fpath, ID3=ID3)
+            if audio.tags is None:
+                audio.add_tags()
+            if "TRCK" in audio.tags:
+                del audio.tags["TRCK"]
+            audio.tags.add(TRCK(encoding=3, text=str(i)))
+            audio.save()
+            print(f"Track {i} → {os.path.basename(fpath)}")
+        except Exception as e:
+            print(f"Track update error: {e}")
+
+
+# -----------------------------
+# DATE HANDLING (DST-PROOF)
+# -----------------------------
+
+# Powermix airs Friday night (local), but files are posted early Saturday UTC.
+# So we ALWAYS want "yesterday in UTC".
+utc_now = datetime.now(timezone.utc)
+target_date = (utc_now - timedelta(days=1)).strftime("%Y-%m-%d")
+
+print(f"Using UTC date: {target_date}")
+
+# -----------------------------
+# DOWNLOAD FILES
+# -----------------------------
+
+downloaded_files = []
+
+for slot in TIME_SLOTS:
+    url = f"{BASE_URL}{target_date}{slot}.m4a"
+    fname = f"KNHC_{target_date}{slot}.m4a"
+
+    if not os.path.exists(fname):
+        if download_file(url, fname):
+            downloaded_files.append(fname)
     else:
-        print(f"{output_filename} already exists, skipping combination")
+        print(f"{fname} already exists")
 
-# Loop through each day to remove the original downloaded files
-for day in range(days_to_download):
-    date_str = (current_date - timedelta(days=day)).strftime("%Y-%m-%d")
-    for time_slot in time_slots:
-        filename = f"KNHC_{date_str}{time_slot}.m4a"
-        if os.path.exists(filename):
-            os.remove(filename)
-            print(f"Removed {filename}")
 
-# Update track numbers for all files in the target directory
-# This ensures proper track numbering based on file modification time (newest = 0)
-if newly_created_files:
-    print(f"\nNew files created: {len(newly_created_files)}")
-    update_track_numbers()
+# -----------------------------
+# COMBINE AUDIO
+# -----------------------------
+
+output_mp3 = os.path.join(TARGET_DIR, f"C895_Powermix_KNHC_{target_date}.mp3")
+
+if not os.path.exists(output_mp3):
+    combined = AudioSegment.empty()
+
+    for fname in downloaded_files:
+        audio = AudioSegment.from_file(fname, format="m4a")
+        combined += audio
+
+    if combined.duration_seconds > 0:
+        combined.export(output_mp3, format="mp3", bitrate="192k")
+        print(f"Created {output_mp3}")
+        add_metadata(output_mp3, target_date)
 else:
-    print("\nNo new files were created during this run.")
-    # Still update track numbers for existing files if any exist
-    update_track_numbers()
+    print(f"{output_mp3} already exists")
+
+
+# -----------------------------
+# CLEANUP
+# -----------------------------
+
+for fname in downloaded_files:
+    os.remove(fname)
+    print(f"Removed {fname}")
+
+# -----------------------------
+# TRACK NUMBERING
+# -----------------------------
+
+update_track_numbers()
+print("Done.")

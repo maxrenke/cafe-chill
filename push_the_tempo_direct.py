@@ -1,5 +1,5 @@
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pydub import AudioSegment
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, TCON, TPE2, TPOS, COMM, APIC, TRCK
@@ -136,8 +136,8 @@ base_url = "https://dgk8fnvzp75ey.cloudfront.net/KNHC_"
 # Time slots for the audio files
 time_slots = ["T06", "T07"]
 
-# Starting date for downloading files
-current_date = datetime.today()
+# Starting date for downloading files (DST-proof: use UTC)
+current_date = datetime.now(timezone.utc).replace(tzinfo=None, hour=0, minute=0, second=0, microsecond=0)
 
 # Check if today is Saturday, if not, set to the last Saturday
 # The show is on Friday night, files are available Saturday morning UTC

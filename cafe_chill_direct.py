@@ -1,5 +1,5 @@
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pydub import AudioSegment
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, TCON, TPE2, TPOS, COMM, APIC, TRCK
@@ -147,13 +147,12 @@ base_url = "https://dgk8fnvzp75ey.cloudfront.net/KNHC_"
 # Adjust for daylight savings time if applicable
 time_slots = ["T14", "T15", "T16", "T17"]
 
-# Starting date for downloading files
-current_date = datetime.today().strftime("%Y-%m-%d")
-current_date = datetime.strptime(current_date, "%Y-%m-%d")
+# Starting date for downloading files (DST-proof: use UTC)
+current_date = datetime.now(timezone.utc).replace(tzinfo=None, hour=0, minute=0, second=0, microsecond=0)
 
 # Check if today is Sunday, if not, set to the last Sunday
-if datetime.today().weekday() != 6:
-    current_date -= timedelta(days=(datetime.today().weekday() + 1) % 7)
+if current_date.weekday() != 6:
+    current_date -= timedelta(days=(current_date.weekday() + 1) % 7)
 
 # Number of days to download files for
 days_to_download = 1
