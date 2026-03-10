@@ -81,7 +81,7 @@ def add_metadata(mp3_file_path, date_str, track_number=None):
                 ))
             print("Added album art")
 
-        audio.save()
+        audio.save(v2_version=3)
         print(f"Metadata added to {mp3_file_path}")
 
     except Exception as e:
@@ -107,7 +107,7 @@ def update_track_numbers():
             if "TRCK" in audio.tags:
                 del audio.tags["TRCK"]
             audio.tags.add(TRCK(encoding=3, text=str(i)))
-            audio.save()
+            audio.save(v2_version=3)
             print(f"Track {i} → {os.path.basename(fpath)}")
         except Exception as e:
             print(f"Track update error: {e}")
@@ -117,11 +117,12 @@ def update_track_numbers():
 # DATE HANDLING (DST-PROOF)
 # -----------------------------
 
-# Powermix airs Friday night (local), but files are posted early Saturday UTC.
-# So we ALWAYS want "yesterday in UTC".
+# Powermix airs Friday night (local), files are posted Saturday UTC.
+# Find the most recent Saturday in UTC.
 utc_now = datetime.now(timezone.utc)
-target_date = (utc_now - timedelta(days=1)).strftime("%Y-%m-%d")
-
+days_since_saturday = (utc_now.weekday() - 5) % 7  # Monday=0, Saturday=5
+last_saturday = utc_now - timedelta(days=days_since_saturday)
+target_date = last_saturday.strftime("%Y-%m-%d")
 print(f"Using UTC date: {target_date}")
 
 # -----------------------------
