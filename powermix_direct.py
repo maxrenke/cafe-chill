@@ -97,7 +97,7 @@ def update_track_numbers():
         print("No files to update.")
         return
 
-    files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+    files.sort(key=lambda x: re.search(r"KNHC_(\d{4}-\d{2}-\d{2})", x).group(1), reverse=True)
 
     for i, fpath in enumerate(files):
         try:

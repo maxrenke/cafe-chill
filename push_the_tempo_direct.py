@@ -99,7 +99,7 @@ def update_track_numbers():
         return
     
     # Sort files by modification time (newest first)
-    existing_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+    existing_files.sort(key=lambda x: re.search(r"KNHC_(\d{4}-\d{2}-\d{2})", x).group(1), reverse=True)
     
     print(f"Found {len(existing_files)} existing files. Updating track numbers...")
     
