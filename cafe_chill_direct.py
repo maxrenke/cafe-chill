@@ -86,7 +86,7 @@ def add_metadata(mp3_file_path, date_str, track_number=None):
             print(f"Added album art from {album_art_path}")
         
         # Save the changes
-        audio_file.save()
+        audio_file.save(v2_version=3)
         print(f"Added metadata to {mp3_file_path}")
         print(f"Title: {appealing_title}")
         if track_number is not None:
@@ -129,7 +129,7 @@ def update_track_numbers():
             
             # Add new track number
             audio_file.tags.add(TRCK(encoding=3, text=str(track_num)))
-            audio_file.save()
+            audio_file.save(v2_version=3)
             
             filename = os.path.basename(file_path)
             print(f"Updated track number {track_num} for: {filename}")
