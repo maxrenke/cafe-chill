@@ -12,19 +12,18 @@ cd "$SCRIPT_DIR" || exit 1
 
 # ---------------------------------------------------------------------------
 # Returns the date (YYYY-MM-DD) of the most recent occurrence of a given
-# weekday. dow: 0=Mon 1=Tue 2=Wed 3=Thu 4=Fri 5=Sat 6=Sun (UTC)
+# weekday. dow: 0=Mon 1=Tue 2=Wed 3=Thu 4=Fri 5=Sat 6=Sun (LOCAL TIME)
 # Includes today if today matches.
 # ---------------------------------------------------------------------------
 last_weekday_date() {
     local target_dow=$1
-    local today_dow
-    today_dow=$(( $(date -u +%u) - 1 ))  # ISO 1-7 -> 0-6
+    local today_dow=$(( $(date +%u) - 1 ))  # local time, 0–6
     local days_back=$(( (today_dow - target_dow + 7) % 7 ))
-    date -u -d "${days_back} days ago" +%Y-%m-%d
+    date -d "${days_back} days ago" +%Y-%m-%d   # LOCAL TIME (DST‑safe)
 }
 
-today_dow_utc() {
-    echo $(( $(date -u +%u) - 1 ))
+today_dow_local() {
+    echo $(( $(date +%u) - 1 ))
 }
 
 # ---------------------------------------------------------------------------
@@ -38,8 +37,8 @@ should_run() {
     local expected_file="$3"
     local available_dow="$4"
 
-    # Use LOCAL time, not UTC
-    local dow=$(( $(date +%u) - 1 ))   # 0=Mon..6=Sun
+    # Use LOCAL time, DST‑aware
+    local dow=$(( $(date +%u) - 1 ))
 
     # Day before available_dow
     local day_before=$(( (available_dow + 6) % 7 ))
