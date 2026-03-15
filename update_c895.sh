@@ -28,18 +28,9 @@ today_dow_utc() {
 }
 
 # ---------------------------------------------------------------------------
-# Decides whether a show's download should run.
-# Returns 0 (run) or 1 (skip).
-#
-# Skip conditions:
-#   1. It is the day before files become available (show hasn't aired yet)
-#   2. This week's expected output file already exists on disk
-#
-# Args:
-#   $1  show_name       - display name for log messages
-#   $2  target_dir      - directory where MP3s are saved
-#   $3  expected_file   - full path to this week's expected MP3
-#   $4  available_dow   - day files first appear: 0=Mon..5=Sat..6=Sun (UTC)
+# Decides whether to run a show's download.
+# Returns 0 = go ahead, 1 = skip.
+#   available_dow: weekday when files become available (0=Mon..6=Sun)
 # ---------------------------------------------------------------------------
 should_run() {
     local show_name="$1"
@@ -47,18 +38,19 @@ should_run() {
     local expected_file="$3"
     local available_dow="$4"
 
-    local dow
-    dow=$(today_dow_utc)
+    # Use LOCAL time, not UTC
+    local dow=$(( $(date +%u) - 1 ))   # 0=Mon..6=Sun
 
-    # days_since_avail==6 means today is exactly one day before availability
-    # i.e. the show airs tonight but files won't exist until tomorrow
-    local days_since_avail=$(( (dow - available_dow + 7) % 7 ))
-    if [ "$days_since_avail" -eq 6 ]; then
-        echo -e "${YELLOW}⏭  ${show_name}: show hasn't aired yet — files available tomorrow. Skipping.${NC}"
+    # Day before available_dow
+    local day_before=$(( (available_dow + 6) % 7 ))
+
+    # If today is the day before the show is available → skip
+    if [ "$dow" -eq "$day_before" ]; then
+        echo -e "${YELLOW}⏭  ${show_name}: not aired yet — files available tomorrow. Skipping.${NC}"
         return 1
     fi
 
-    # Already have this week's episode?
+    # Already downloaded this week's episode?
     if [ -f "$expected_file" ]; then
         echo -e "${CYAN}✔  ${show_name}: already have $(basename "$expected_file"). Skipping.${NC}"
         return 1
@@ -97,7 +89,7 @@ echo -e "${YELLOW} $(date -u '+%Y-%m-%d %H:%M UTC')      ${NC}"
 echo -e "${YELLOW}=======================================${NC}"
 echo
 
-# ── Cafe Chill ── airs Sunday, files available Sunday UTC (dow=6)
+# ── Cafe Chill ── airs/available Sunday UTC (dow=6)
 CAFE_DIR="/DATA/Media/Music/C895/c895_cafe_chill"
 CAFE_DATE=$(last_weekday_date 6)
 CAFE_FILE="${CAFE_DIR}/C895_Cafe_Chill_KNHC_${CAFE_DATE}.mp3"
@@ -106,7 +98,7 @@ if should_run "Cafe Chill" "$CAFE_DIR" "$CAFE_FILE" 6; then
     run_show_script "cafe_chill_simple.sh" "Cafe Chill" "$CAFE_DIR"
 fi
 
-# ── Push The Tempo ── airs Friday night, files available Saturday UTC (dow=5)
+# ── Push The Tempo ── airs Friday night, available Saturday UTC (dow=5)
 PTT_DIR="/DATA/Media/Music/C895/c895_push_the_tempo"
 PTT_DATE=$(last_weekday_date 5)
 PTT_FILE="${PTT_DIR}/C895_Push_The_Tempo_KNHC_${PTT_DATE}.mp3"
@@ -115,7 +107,7 @@ if should_run "Push The Tempo" "$PTT_DIR" "$PTT_FILE" 5; then
     run_show_script "push_the_tempo_simple.sh" "Push The Tempo" "$PTT_DIR"
 fi
 
-# ── Powermix ── airs Friday night, files available Saturday UTC (dow=5)
+# ── Powermix ── airs Friday night, available Saturday UTC (dow=5)
 PM_DIR="/DATA/Media/Music/C895/c895_powermix"
 PM_DATE=$(last_weekday_date 5)
 PM_FILE="${PM_DIR}/C895_Powermix_KNHC_${PM_DATE}.mp3"
@@ -127,4 +119,3 @@ fi
 echo -e "${GREEN}=======================================${NC}"
 echo -e "${GREEN} Done.                                 ${NC}"
 echo -e "${GREEN}=======================================${NC}"
-
