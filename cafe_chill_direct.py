@@ -6,6 +6,37 @@ from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, TCON, TPE2, TPOS, COMM, APIC, TRCK
 import os
 import glob
+from zoneinfo import ZoneInfo
+
+# Starting date for downloading files (DST-proof: use UTC)
+current_date = datetime.now(timezone.utc).replace(
+    tzinfo=None, hour=0, minute=0, second=0, microsecond=0
+)
+
+# Check if today is Sunday, if not, set to the last Sunday
+if current_date.weekday() != 6:
+    current_date -= timedelta(days=(current_date.weekday() + 1) % 7)
+
+def get_cafe_chill_timeslots(date_obj):
+    """
+    Returns the correct UTC T-codes for the 4 Café Chill hours,
+    automatically adjusting for DST.
+    """
+    pacific = ZoneInfo("America/Los_Angeles")
+    utc = ZoneInfo("UTC")
+
+    slots = []
+    for hour in [6, 7, 8, 9]:  # Café Chill hours in Pacific Time
+        local_dt = datetime(
+            date_obj.year, date_obj.month, date_obj.day,
+            hour, 0, 0, tzinfo=pacific
+        )
+        utc_dt = local_dt.astimezone(utc)
+        t_code = f"T{utc_dt.hour:02d}"
+        slots.append(t_code)
+
+    return slots
+
 
 # Function to download a file from a given URL and save it with the specified filename
 def download_file(url, filename):
@@ -146,7 +177,9 @@ def update_track_numbers():
 base_url = "https://dgk8fnvzp75ey.cloudfront.net/KNHC_"
 # Time slots for the audio files
 # Adjust for daylight savings time if applicable
-time_slots = ["T14", "T15", "T16", "T17"]
+time_slots = get_cafe_chill_timeslots(current_date)
+print("Using time slots:", time_slots)
+
 
 # Starting date for downloading files (DST-proof: use UTC)
 current_date = datetime.now(timezone.utc).replace(tzinfo=None, hour=0, minute=0, second=0, microsecond=0)
