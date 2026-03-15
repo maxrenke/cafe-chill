@@ -135,7 +135,7 @@ def update_track_numbers():
 # Base URL for the audio files
 base_url = "https://dgk8fnvzp75ey.cloudfront.net/KNHC_"
 # Time slots for the audio files
-time_slots = ["T06", "T07"]
+time_slots = ["T05", "T06"]
 
 # Starting date for downloading files (DST-proof: use UTC)
 current_date = datetime.now(timezone.utc).replace(tzinfo=None, hour=0, minute=0, second=0, microsecond=0)
