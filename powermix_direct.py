@@ -12,7 +12,7 @@ import glob
 # -----------------------------
 
 BASE_URL = "https://dgk8fnvzp75ey.cloudfront.net/KNHC_"
-TIME_SLOTS = ["T05"]  # Powermix hour
+TIME_SLOTS = ["T04"]  # Powermix hour
 TARGET_DIR = "/DATA/Media/Music/C895/c895_powermix"
 os.makedirs(TARGET_DIR, exist_ok=True)
 
