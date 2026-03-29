@@ -3,6 +3,7 @@ import requests
 import subprocess
 import sys
 import time
+import threading
 from datetime import datetime, timedelta, timezone
 import concurrent.futures
 from mutagen.mp3 import MP3
@@ -170,6 +171,9 @@ def _encode_one(m4a_file, mp3_file, duration, progress, task_id):
         mp3_file,
     ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    stderr_buf = []
+    stderr_thread = threading.Thread(target=lambda: stderr_buf.append(proc.stderr.read()))
+    stderr_thread.start()
     for line in proc.stdout:
         if line.startswith("out_time="):
             try:
@@ -177,8 +181,9 @@ def _encode_one(m4a_file, mp3_file, duration, progress, task_id):
                 progress.update(task_id, completed=int(h) * 3600 + int(m) * 60 + float(s))
             except Exception:
                 pass
-    stderr_out = proc.stderr.read()
+    stderr_thread.join()
     proc.wait()
+    stderr_out = stderr_buf[0] if stderr_buf else ""
     if proc.returncode != 0:
         return False, stderr_out
     return True, ""
