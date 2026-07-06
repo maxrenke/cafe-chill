@@ -2,8 +2,16 @@ import re
 import requests
 import subprocess
 import sys
+import select
 import time
 import threading
+
+try:
+    import termios
+    import tty
+    HAS_TERMIOS = True
+except ImportError:  # non-POSIX (e.g. Windows) — no single-keypress support
+    HAS_TERMIOS = False
 from datetime import datetime, timedelta, timezone
 import concurrent.futures
 from mutagen.mp3 import MP3
@@ -12,6 +20,7 @@ import os
 import glob
 from zoneinfo import ZoneInfo
 from rich.console import Console
+from spinitron_tracklist import add_tracklist_to_show
 from rich.progress import (
     Progress, SpinnerColumn, BarColumn, TextColumn,
     DownloadColumn, TransferSpeedColumn, TimeRemainingColumn,
@@ -89,6 +98,40 @@ def download_file(url, filename):
         return False
 
 
+SKIP_EXIT_CODE = 75  # tells the orchestrator the user chose to skip this show
+
+
+def interruptible_sleep(seconds):
+    """Sleep up to `seconds`, watching for a keypress when interactive.
+
+    Returns:
+        "retry"  the timer elapsed, or the user pressed a key to retry now
+        "skip"   the user pressed [s] (or ESC) to back out of this show
+
+    When non-interactive (cron, piped, redirected — no TTY) it sleeps the
+    full duration and returns "retry", never blocking on input."""
+    if not (HAS_TERMIOS and sys.stdin.isatty()):
+        time.sleep(seconds)
+        return "retry"
+
+    print("   ⏭  Press [s] to skip this show, or any other key to retry now...")
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setcbreak(fd)
+        ready, _, _ = select.select([sys.stdin], [], [], seconds)
+        if not ready:
+            return "retry"  # timer elapsed
+        key = sys.stdin.read(1)
+        if key.lower() == "s" or key == "\x1b":  # 's' or ESC backs out
+            print("   ⏭  Skipping this show.")
+            return "skip"
+        print("   ↻  Retrying now.")
+        return "retry"
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+
 def download_all_slots_with_retry(date_str, time_slots):
     """
     Download all time slots. For any that are missing, retry every
@@ -124,7 +167,9 @@ def download_all_slots_with_retry(date_str, time_slots):
         print(f"   The show has not fully posted yet — please come back in {RETRY_INTERVAL_MINUTES} minutes.")
         print(f"   Retrying automatically... (attempt {attempt}/{MAX_RETRIES})")
         print(f"💤 Sleeping {RETRY_INTERVAL_MINUTES} minutes...")
-        time.sleep(RETRY_INTERVAL_MINUTES * 60)
+        if interruptible_sleep(RETRY_INTERVAL_MINUTES * 60) == "skip":
+            print("\n⏭  Skipped by user — moving on.")
+            sys.exit(SKIP_EXIT_CODE)
 
         still_missing = []
         for time_slot, file_url, filename in missing_slots:
@@ -362,6 +407,11 @@ for day in range(days_to_download):
                 console.print(f"  [green]✔[/green] Created [bold]{os.path.basename(output_filename)}[/bold]")
                 newly_created_files.append((output_filename, date_str))
                 add_metadata(output_filename, date_str)
+                add_tracklist_to_show(
+                    output_filename, "Cafe Chill",
+                    datetime.strptime(date_str, "%Y-%m-%d").date(),
+                    start_hour=6, duration_hours=4,
+                )
             else:
                 console.print(f"  [red]✖[/red] ffmpeg encoding failed")
         else:

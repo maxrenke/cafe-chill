@@ -31,11 +31,15 @@ echo "Track numbering will be applied automatically (newest file = track 0)"
 
 # Run the Python script
 python3 "$PYTHON_SCRIPT"
+rc=$?
 
-# Check if the Python script ran successfully
-if [ $? -eq 0 ]; then
+# Check how the Python script exited (75 = user chose to skip this show)
+if [ "$rc" -eq 0 ]; then
     echo "Script completed successfully!"
     echo "Check $TARGET_DIR for your files with track numbers applied."
+elif [ "$rc" -eq 75 ]; then
+    echo "Skipped by user — moving on."
+    exit 75
 else
     echo "Error: Python script failed to execute properly"
     exit 1
