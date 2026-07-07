@@ -1,0 +1,9 @@
+[Unit]
+Description=C89.5 now-playing sidecar updater
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=casaos
+WorkingDirectory=/home/casaos/c895
+ExecStart=/usr/bin/python3 /home/casaos/c895/now_playing_json.py --if-requested
