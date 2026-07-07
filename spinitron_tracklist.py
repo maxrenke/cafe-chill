@@ -16,10 +16,27 @@ from datetime import datetime, timedelta
 import requests
 
 CALENDAR_FEED_URL = "https://spinitron.com/KNHC/calendar-feed"
+STATION_URL = "https://spinitron.com/KNHC/"
 SPIN_ROW_RE = re.compile(
     r'data-spin="({.*?})"[^>]*><td class="spin-time"><a[^>]*>([^<]+)</a>'
 )
 HEADERS = {"User-Agent": "Mozilla/5.0"}
+
+
+def fetch_now_playing():
+    """Return (time_text, artist, title, release) for the currently airing track.
+
+    KNHC's station page lists its most recent spins newest-first, so the
+    top entry is whatever's live on air right now (with whatever small lag
+    exists between a song starting and the DJ/automation logging it).
+    """
+    resp = requests.get(STATION_URL, headers=HEADERS, timeout=15)
+    resp.raise_for_status()
+    match = SPIN_ROW_RE.search(resp.text)
+    if match is None:
+        return None
+    spin = json.loads(html.unescape(match.group(1)))
+    return match.group(2), spin.get("a"), spin.get("s"), spin.get("r", "")
 
 
 def _fetch_calendar_events(air_date):
